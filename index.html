@@ -10,7 +10,7 @@
     <style>
         body { margin: 0; overflow: hidden; background: #020202; }
         
-        /* --- NEW LOGIN SCREEN STYLES --- */
+        /* --- SECURE LOGIN SCREEN --- */
         #login-screen {
             position: fixed; top:0; left:0; width:100%; height:100%;
             background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
@@ -28,12 +28,11 @@
             color: black; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px;
         }
         .login-btn:hover { background: white; box-shadow: 0 0 15px rgba(0,243,255,0.5); }
-        /* ------------------------------- */
 
         #portal {
             position: fixed; top:0; left:0; width:100%; height:100%;
             background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
-            display: none; /* Changed to none initially, login handles it */ flex-direction: column; align-items: center; justify-content: center;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
             z-index: 9999; color: white; transition: opacity 0.5s; font-family: 'Inter', sans-serif;
         }
         .portal-btn {
@@ -227,23 +226,19 @@
 </div>
 
 <script>
-   
     const API_URL = "/api/analyze";
     
     let MODE = 'NONE';
     let isHIPAA = true;
-    let currentUser = "PX-992"; // Default user
+    let currentUser = "PX-992"; 
 
-    // ==========================================
-    // ✅ SMART LOGIN LOGIC
-    // ==========================================
     window.onload = function() {
         const savedUser = localStorage.getItem('neurolens_user');
         if (savedUser) {
             currentUser = savedUser;
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('portal').style.display = 'flex';
-            switchLanguage(); // Updates the name instantly
+            switchLanguage(); 
         }
     };
 
@@ -257,7 +252,7 @@
             setTimeout(() => {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('portal').style.display = 'flex';
-                switchLanguage(); // Updates the name instantly
+                switchLanguage(); 
             }, 500);
         } else {
             alert("Please enter a name to initialize.");
@@ -268,7 +263,6 @@
         localStorage.removeItem('neurolens_user');
         location.reload();
     }
-    // ==========================================
 
     const dict = {
         'en-US': { logo: "Neurolens AI", user: "User: PX-992", rtitle: "Report Explainer", rdesc: "Upload lab reports for simple explanation.", rbtn: "Upload Report", stitle: "Scan Assistant", sdesc: "Upload X-Ray/MRI images.", sbtn: "Upload Scan", ctitle: "Health Chatbot", cinit: "Hello! Ask me anything.", cplace: "Type here...", csend: "Send" },
@@ -285,10 +279,7 @@
         const lang = document.getElementById('langSelector').value;
         const text = dict[lang];
         document.getElementById('lang-logo').innerText = text.logo; 
-        
-        // Dynamically insert the logged-in name into the language dictionary
         document.getElementById('lang-user').innerText = text.user.replace("PX-992", currentUser);
-        
         document.getElementById('lang-report-title').innerText = text.rtitle; document.getElementById('lang-report-desc').innerText = text.rdesc; document.getElementById('lang-report-btn').innerText = text.rbtn;
         document.getElementById('lang-scan-title').innerText = text.stitle; document.getElementById('lang-scan-desc').innerText = text.sdesc; document.getElementById('lang-scan-btn').innerText = text.sbtn;
         document.getElementById('lang-chat-title').innerText = text.ctitle; document.getElementById('lang-chat-init').innerText = text.cinit; document.getElementById('chatInput').placeholder = text.cplace; document.getElementById('lang-chat-send').innerText = text.csend;
@@ -304,18 +295,14 @@
 
     const scene = new THREE.Scene(); 
     scene.fog = new THREE.FogExp2(0x020202, 0.03); 
-    
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 8); 
-    
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
-    
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enabled = false; controls.enableDamping = true; controls.dampingFactor = 0.05;
     controls.target.set(0, 0, 0); 
-
     const brainGroup = new THREE.Group(); 
     brainGroup.position.x = 0; 
     scene.add(brainGroup);
@@ -324,7 +311,6 @@
     const pos=[], col=[]; 
     const c1 = new THREE.Color(0x66fcf1); 
     const c2 = new THREE.Color(0x1f2833); 
-
     for(let i=0; i<40000; i++){
         let u=Math.random(), v=Math.random(); let r=3.2+Math.random()*0.3;
         let theta=2*Math.PI*u, phi=Math.acos(2*v-1);
