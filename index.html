@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEUROLENS | HEALTHCARE ECOSYSTEM</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&family=Inter:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background: #020202; }
+        
+        #portal {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; color: white; transition: opacity 0.5s; font-family: 'Inter', sans-serif;
+        }
+        .portal-btn {
+            width: 280px; height: 180px; margin: 20px; border-radius: 15px; border: 1px solid #222;
+            background: rgba(255,255,255,0.03); cursor: pointer; transition: 0.3s; color: white;
+            display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .portal-btn:hover { background: rgba(0, 243, 255, 0.1); border-color: #00f3ff; transform: translateY(-5px); }
+        .p-icon { font-size: 40px; margin-bottom: 10px; }
+        .p-title { font-size: 20px; font-weight: bold; letter-spacing: 2px;}
+        .p-desc { font-size: 12px; color: #888; margin-top: 5px; }
+
+        #doctorView { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; font-family: 'JetBrains Mono', monospace; color: #c5c6c7; }
+        .doc-sidebar { 
+            position: absolute; left: 0; top: 0; width: 420px; height: 100vh;
+            background: rgba(5, 7, 10, 0.95); border-right: 1px solid #1f2833;
+            padding: 20px; display: flex; flex-direction: column; z-index: 100; box-sizing: border-box;
+        }
+        .doc-header { border-bottom: 1px solid #00f3ff; padding-bottom: 15px; margin-bottom: 15px; flex-shrink: 0; }
+        .doc-header h1 { font-size: 24px; color: #00f3ff; margin: 0; letter-spacing: -1px; text-transform: uppercase; font-weight: 800; }
+        .scroll-content { flex-grow: 1; overflow-y: auto; padding-right: 5px; }
+        .scroll-content::-webkit-scrollbar { width: 4px; }
+        .scroll-content::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .module { background: rgba(0,0,0,0.4); border: 1px solid #222; padding: 12px; margin-bottom: 12px; }
+        .module-title { font-size: 10px; color: #00f3ff; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 4px; display:flex; justify-content:space-between;}
+        
+        .upload-zone { border: 1px dashed #444; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+        .upload-zone:hover { border-color: #00f3ff; background: rgba(0, 243, 255, 0.05); }
+        
+        .hipaa-toggle { margin-top:10px; font-size:9px; color:#00ff88; display:flex; align-items:center; gap:5px; border: 1px solid #00ff88; padding: 4px; background: rgba(0,255,136,0.05); border-radius: 4px; cursor: pointer; }
+        .hipaa-toggle.off { color: #888; border-color: #444; background: transparent; }
+
+        .bar-container { display: flex; align-items: center; margin-bottom: 6px; font-size: 9px; }
+        .progress-bg { flex-grow: 1; height: 4px; background: #222; margin: 0 8px; }
+        .progress-fill { height: 100%; background: #00f3ff; width: 0%; transition: width 0.5s; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; flex-shrink: 0; }
+        .action-btn { flex: 2; padding: 15px; background: #004444; color: #00f3ff; border: 1px solid #00f3ff; font-weight: 800; font-size: 14px; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        .action-btn:hover { background: #00f3ff; color: #000; box-shadow: 0 0 20px #00f3ff; }
+        .action-btn:disabled { background: #111; color: #555; border-color: #333; cursor: not-allowed; box-shadow: none; }
+        
+        .handoff-btn { width: 100%; padding: 10px; margin-top: 10px; background: #00f3ff; color: #000; border: none; font-weight: bold; font-size: 11px; cursor: pointer; display: none; text-transform: uppercase; }
+        .handoff-btn:hover { background: #fff; }
+
+        .terminal { height: 120px; background: #000; border: 1px solid #222; padding: 10px; flex-shrink: 0; font-size: 9px; overflow-y: auto; color: #00f3ff; margin-top: 15px; line-height: 1.4;}
+        .hand-toggle { position: absolute; top: 20px; right: 20px; z-index: 200; width: 50px; height: 50px; border-radius: 50%; background: rgba(10, 12, 16, 0.9); border: 1px solid #333; color: #555; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .hand-toggle.active { background: #00f3ff; color: #000; box-shadow: 0 0 20px #00f3ff; border-color: #00f3ff; }
+
+        #patientView { display: none; width: 100%; height: 100vh; background: #f4f7f6; font-family: 'Inter', sans-serif; overflow-y: auto; position: relative; z-index: 500; }
+        .pat-nav { background: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .pat-container { max-width: 900px; margin: 40px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .pat-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); text-align: center; position: relative;}
+        .pat-btn { display: inline-block; background: #eef5ff; color: #0056b3; padding: 10px 20px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: 600; font-size: 13px; border: 1px solid #d0e1f5; }
+        
+        .chat-box { grid-column: span 2; background: white; height: 350px; border-radius: 12px; display: flex; flex-direction: column; padding: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .chat-history { flex-grow: 1; overflow-y: auto; border-bottom: 1px solid #eee; margin-bottom: 15px; padding-right: 10px; text-align: left;}
+        .msg { padding: 10px 15px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; max-width: 75%; position: relative; }
+        .msg.ai { background: #f0f2f5; color: #333; align-self: flex-start; line-height: 1.5;}
+        .msg.user { background: #0056b3; color: white; margin-left: auto; }
+        
+        .speak-btn { background: none; border: none; font-size: 16px; cursor: pointer; margin-left: 5px; opacity: 0.6; transition: 0.2s; vertical-align: middle;}
+        .speak-btn:hover { opacity: 1; transform: scale(1.1); }
+
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 15px; height: 15px; animation: spin 1s linear infinite; display: inline-block; margin-left: 10px; display: none;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .logout { position: fixed; bottom: 20px; right: 20px; background: #ff4757; color: white; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 12px; z-index: 1000; border: none; display: none;}
+        .lang-select { padding: 8px 12px; border-radius: 8px; border: 1px solid #d0e1f5; background: #eef5ff; color: #0056b3; font-family: 'Inter', sans-serif; font-weight: 600; outline: none; cursor: pointer; font-size: 13px;}
+    </style>
+</head>
+<body>
+
+<div id="portal">
+    <h1 style="letter-spacing: 5px; margin-bottom: 5px;">NEUROLENS 1.5</h1>
+    <p style="color:#666; margin-top:0;">SECURE HEALTHCARE ECOSYSTEM</p>
+    <div>
+        <div class="portal-btn" onclick="enterMode('DOCTOR')">
+            <span class="p-icon">🩺</span>
+            <span class="p-title">CLINICIAN</span>
+            <span class="p-desc">Onco-Pilot 3D • Surgical Nav</span>
+        </div>
+        <div class="portal-btn" onclick="enterMode('PATIENT')">
+            <span class="p-icon">👤</span>
+            <span class="p-title">PATIENT</span>
+            <span class="p-desc">Neurolens • Report Explainer</span>
+        </div>
+    </div>
+</div>
+
+<button class="logout" id="logoutBtn" onclick="location.reload()">LOGOUT</button>
+
+<div id="doctorView">
+    <div id="canvas-container" style="position:absolute; width:100%; height:100%;"></div> 
+    <div class="hand-toggle" id="handBtn" onclick="toggleManual()" title="Free Camera">🕹️</div>
+    
+    <div class="doc-sidebar">
+        <div class="doc-header">
+            <h1>Onco-Pilot</h1>
+            <div style="font-size:10px; color:#666; letter-spacing:2px; margin-top:5px;">ENTERPRISE SURGICAL V11.0</div>
+        </div>
+        
+        <div class="scroll-content">
+            <div class="module">
+                <div class="module-title"><span>Input Source</span> <span id="source-status" style="color:#555">ONLINE</span></div>
+                <div class="upload-zone" onclick="document.getElementById('docFile').click()">
+                    <div id="docUploadText" style="color:#888; font-size:10px;">📂 MOUNT DICOM / MRI</div>
+                    <div id="docFileName" style="color:#00f3ff; display:none; font-size:11px; font-weight:bold;">FILE LOADED</div>
+                    <input type="file" id="docFile" hidden onchange="docFileLoaded()">
+                </div>
+                <div class="hipaa-toggle" id="hipaaToggle" onclick="toggleHIPAA()">
+                    🔒 <span>HIPAA Anonymizer: ON (PHI Stripped)</span>
+                </div>
+            </div>
+
+            <div class="module">
+                <div class="module-title">Stereotactic Coordinates</div>
+                <div class="bar-container"><div style="width:20px; color:white; font-weight:bold;">X</div> <div class="progress-bg"><div class="progress-fill" id="barX"></div></div></div>
+                <div class="bar-container"><div style="width:20px; color:white; font-weight:bold;">Y</div> <div class="progress-bg"><div class="progress-fill" id="barY"></div></div></div>
+                <div class="bar-container"><div style="width:20px; color:white; font-weight:bold;">Z</div> <div class="progress-bg"><div class="progress-fill" id="barZ"></div></div></div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="action-btn" id="docRunBtn" onclick="runDoctorAnalysis()">INITIALIZE</button>
+            <button class="action-btn" id="resetBtn" onclick="resetSystem()" style="display:none; background:#330000; border-color:#ff003c; color:#ff003c;">RESET</button>
+        </div>
+        
+        <button class="handoff-btn" id="handoffBtn" onclick="sendToPatient()">⇲ Send Plan to Neurolens</button>
+
+        <div class="terminal" id="docConsole">[SYS] Neurolens Serverless Kernel... OK.<br>>_</div>
+    </div>
+    <div id="tumorLabel" style="position:absolute; color:#00f3ff; font-weight:bold; font-size:10px; padding:4px 8px; background:rgba(0,243,255,0.1); border:1px solid #00f3ff; display:none; pointer-events:none;">TARGET</div>
+</div>
+
+<div id="patientView">
+    <div class="pat-nav">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div id="lang-logo" style="color:#0056b3; font-weight:800; font-size:24px;">Neurolens AI</div>
+            <select class="lang-select" id="langSelector" onchange="switchLanguage()">
+                <option value="en-US">English (US)</option>
+                <option value="hi-IN">हिंदी (Hindi)</option>
+                <option value="te-IN">తెలుగు (Telugu)</option>
+                <option value="es-ES">Español (Spanish)</option>
+                <option value="fr-FR">Français (French)</option>
+                <option value="ar-SA">العربية (Arabic)</option>
+                <option value="zh-CN">中文 (Chinese)</option>
+                <option value="ru-RU">Русский (Russian)</option>
+            </select>
+        </div>
+        <div id="lang-user" style="color:#666; font-size:14px;">User: PX-992</div>
+    </div>
+    <div class="pat-container">
+        <div class="pat-card">
+            <div style="font-size:30px;">📄</div>
+            <h3 id="lang-report-title">Report Explainer</h3>
+            <p id="lang-report-desc" style="color:#666; font-size:13px;">Upload lab reports for simple explanation.</p>
+            <input type="file" id="patReportFile" hidden onchange="handlePatUpload('REPORT')">
+            <div class="pat-btn" onclick="document.getElementById('patReportFile').click()">
+                <span id="lang-report-btn">Upload Report</span> <div class="loader" id="load1"></div>
+            </div>
+        </div>
+        <div class="pat-card">
+            <div style="font-size:30px;">🩻</div>
+            <h3 id="lang-scan-title">Scan Assistant</h3>
+            <p id="lang-scan-desc" style="color:#666; font-size:13px;">Upload X-Ray/MRI images.</p>
+            <input type="file" id="patScanFile" hidden onchange="handlePatUpload('SCAN')">
+            <div class="pat-btn" onclick="document.getElementById('patScanFile').click()">
+                <span id="lang-scan-btn">Upload Scan</span> <div class="loader" id="load2"></div>
+            </div>
+        </div>
+        <div class="chat-box">
+            <h3 id="lang-chat-title" style="margin-top:0; color:#333;">Health Chatbot</h3>
+            <div class="chat-history" id="chatHistory">
+                <div class="msg ai">
+                    <span class="txt" id="lang-chat-init">Hello! Ask me anything.</span> 
+                    <button class="speak-btn" onclick="readAloud(this.previousElementSibling.innerHTML)">🔊</button>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="chatInput" placeholder="Type here..." style="flex-grow:1; padding:10px; border:1px solid #eee; border-radius:5px;">
+                <button id="lang-chat-send" onclick="sendChat()" style="background:#0056b3; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // ✅ NO MORE NGROK REQUIRED. WE USE THE RELATIVE VERCEL API PATH NOW.
+    // ==========================================
+    const API_URL = "http://127.0.0.1:5000/api/analyze";
+    
+    let MODE = 'NONE';
+    let isHIPAA = true;
+
+    const dict = {
+        'en-US': { logo: "Neurolens AI", user: "User: PX-992", rtitle: "Report Explainer", rdesc: "Upload lab reports for simple explanation.", rbtn: "Upload Report", stitle: "Scan Assistant", sdesc: "Upload X-Ray/MRI images.", sbtn: "Upload Scan", ctitle: "Health Chatbot", cinit: "Hello! Ask me anything.", cplace: "Type here...", csend: "Send" },
+        'hi-IN': { logo: "Neurolens AI", user: "उपयोगकर्ता: PX-992", rtitle: "रिपोर्ट व्याख्याकार", rdesc: "सरल व्याख्या के लिए लैब रिपोर्ट अपलोड करें।", rbtn: "रिपोर्ट अपलोड करें", stitle: "स्कैन सहायक", sdesc: "एक्स-रे/एमआरआई चित्र अपलोड करें।", sbtn: "स्कैन अपलोड करें", ctitle: "स्वास्थ्य चैटबॉट", cinit: "नमस्ते! मुझसे कुछ भी पूछें।", cplace: "यहां टाइप करें...", csend: "भेजें" },
+        'te-IN': { logo: "Neurolens AI", user: "వాడుకరి: PX-992", rtitle: "రిపోర్ట్ ఎక్స్‌ప్లైనర్", rdesc: "సులభమైన వివరణ కోసం ల్యాబ్ నివేదికలను అప్‌లోడ్ చేయండి.", rbtn: "రిపోర్ట్ అప్‌లోడ్ చేయండి", stitle: "స్కాన్ అసిస్టెంట్", sdesc: "X-Ray/MRI చిత్రాలను అప్‌లోడ్ చేయండి.", sbtn: "స్కాన్ అప్‌లోడ్ చేయండి", ctitle: "హెల్త్ చాట్‌బాట్", cinit: "నమస్తే! నన్ను ఏదైనా అడగండి.", cplace: "ఇక్కడ టైప్ చేయండి...", csend: "పంపండి" },
+        'es-ES': { logo: "Neurolens IA", user: "Usuario: PX-992", rtitle: "Explicador de Informes", rdesc: "Sube informes para explicación sencilla.", rbtn: "Subir Informe", stitle: "Asistente de Escaneo", sdesc: "Sube imágenes de Rayos-X/Resonancia.", sbtn: "Subir Escaneo", ctitle: "Chatbot de Salud", cinit: "¡Hola! Pregúntame cualquier cosa.", cplace: "Escribe aquí...", csend: "Enviar" },
+        'fr-FR': { logo: "Neurolens IA", user: "Utilisateur: PX-992", rtitle: "Explicateur", rdesc: "Téléchargez des rapports de laboratoire.", rbtn: "Télécharger", stitle: "Assistant Scanner", sdesc: "Téléchargez des images IRM.", sbtn: "Télécharger Scan", ctitle: "Chatbot Santé", cinit: "Bonjour! Demandez-moi n'importe quoi.", cplace: "Tapez ici...", csend: "Envoyer" },
+        'ar-SA': { logo: "Neurolens AI", user: "مستخدم: PX-992", rtitle: "شرح التقارير", rdesc: "قم بتحميل تقارير المختبر لشرح مبسط.", rbtn: "تحميل التقرير", stitle: "مساعد الفحص", sdesc: "قم بتحميل صور الأشعة السينية / الرنين المغناطيسي.", sbtn: "تحميل الفحص", ctitle: "الدردشة الصحية", cinit: "مرحباً! اسألني أي شيء.", cplace: "اكتب هنا...", csend: "إرسال" },
+        'zh-CN': { logo: "Neurolens AI", user: "用户: PX-992", rtitle: "报告讲解", rdesc: "上传化验单获取简单解释。", rbtn: "上传报告", stitle: "扫描助手", sdesc: "上传 X 光/MRI 图像。", sbtn: "上传扫描件", ctitle: "健康聊天机器人", cinit: "你好！随便问。", cplace: "在这里输入...", csend: "发送" },
+        'ru-RU': { logo: "Neurolens ИИ", user: "Пользователь: PX-992", rtitle: "Объяснение Отчетов", rdesc: "Загрузите лабораторные отчеты.", rbtn: "Загрузить Отчет", stitle: "Помощник по Сканированию", sdesc: "Загрузите рентген/МРТ.", sbtn: "Загрузить Скан", ctitle: "Медицинский Чат-бот", cinit: "Здравствуйте! Спрашивайте.", cplace: "Введите текст...", csend: "Отправить" }
+    };
+
+    function switchLanguage() {
+        const lang = document.getElementById('langSelector').value;
+        const text = dict[lang];
+        document.getElementById('lang-logo').innerText = text.logo; document.getElementById('lang-user').innerText = text.user;
+        document.getElementById('lang-report-title').innerText = text.rtitle; document.getElementById('lang-report-desc').innerText = text.rdesc; document.getElementById('lang-report-btn').innerText = text.rbtn;
+        document.getElementById('lang-scan-title').innerText = text.stitle; document.getElementById('lang-scan-desc').innerText = text.sdesc; document.getElementById('lang-scan-btn').innerText = text.sbtn;
+        document.getElementById('lang-chat-title').innerText = text.ctitle; document.getElementById('lang-chat-init').innerText = text.cinit; document.getElementById('chatInput').placeholder = text.cplace; document.getElementById('lang-chat-send').innerText = text.csend;
+    }
+
+    function readAloud(text) {
+        let cleanText = text.replace(/<[^>]*>?/gm, ''); 
+        cleanText = cleanText.replace(/[*#_`~]/g, ''); 
+        const speech = new SpeechSynthesisUtterance(cleanText);
+        speech.lang = document.getElementById('langSelector').value; 
+        window.speechSynthesis.speak(speech);
+    }
+
+    const scene = new THREE.Scene(); 
+    scene.fog = new THREE.FogExp2(0x020202, 0.03); 
+    
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 8); 
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+    
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enabled = false; controls.enableDamping = true; controls.dampingFactor = 0.05;
+    controls.target.set(0, 0, 0); 
+
+    const brainGroup = new THREE.Group(); 
+    brainGroup.position.x = 0; 
+    scene.add(brainGroup);
+    
+    const particles = new THREE.BufferGeometry();
+    const pos=[], col=[]; 
+    const c1 = new THREE.Color(0x66fcf1); 
+    const c2 = new THREE.Color(0x1f2833); 
+
+    for(let i=0; i<40000; i++){
+        let u=Math.random(), v=Math.random(); let r=3.2+Math.random()*0.3;
+        let theta=2*Math.PI*u, phi=Math.acos(2*v-1);
+        let x=r*Math.sin(phi)*Math.cos(theta), y=r*Math.sin(phi)*Math.sin(theta), z=r*Math.cos(phi);
+        x*=1.2; y*=0.8; z*=1.3; 
+        if(x>0) x+=0.25; else x-=0.25;
+        if(y < -1 && Math.abs(x) > 1.5) { y -= 0.5 * Math.random(); } 
+        pos.push(x,y,z); let m=c1.clone().lerp(c2,Math.random()); col.push(m.r,m.g,m.b);
+    }
+    particles.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    particles.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
+    const brainMat = new THREE.PointsMaterial({size:0.02, vertexColors:true, opacity:0.8, transparent:true});
+    const brain = new THREE.Points(particles, brainMat);
+    brainGroup.add(brain);
+
+    const tumor = new THREE.Group();
+    const tWire = new THREE.Mesh(new THREE.SphereGeometry(0.6,32,32), new THREE.MeshBasicMaterial({color:0xff003c, wireframe:true, transparent:true, opacity:0.6}));
+    const tCore = new THREE.Mesh(new THREE.SphereGeometry(0.3,32,32), new THREE.MeshBasicMaterial({color:0xff003c}));
+    tumor.add(tWire); tumor.add(tCore);
+    tumor.visible = false; brainGroup.add(tumor);
+
+    let autoRotate = true; let isFlying = false;
+    let targetZoom = new THREE.Vector3(0, 0, 0); 
+    let camTarget = new THREE.Vector3(0, 0, 8);
+
+    function animate(){
+        if(MODE === 'DOCTOR') {
+            requestAnimationFrame(animate);
+            if(autoRotate) {
+                brainGroup.rotation.y += 0.002; 
+                controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.05);
+                camera.position.lerp(new THREE.Vector3(0, 0, 8), 0.05);
+            } else {
+                if(isFlying) {
+                    controls.target.lerp(targetZoom, 0.05); 
+                    camera.position.lerp(camTarget, 0.05);
+                    if(camera.position.distanceTo(camTarget) < 0.1) isFlying = false;
+                } else controls.update();
+            }
+            if(tumor.visible) {
+                tCore.scale.setScalar(1 + Math.sin(Date.now()*0.005)*0.15); 
+                tWire.rotation.x += 0.01; updateLabel(); updateBars();
+            }
+            renderer.render(scene, camera);
+        }
+    }
+
+    function toggleHIPAA() {
+        isHIPAA = !isHIPAA;
+        const el = document.getElementById('hipaaToggle');
+        if(isHIPAA) { el.className = 'hipaa-toggle'; el.innerHTML = '🔒 <span>HIPAA Anonymizer: ON (PHI Stripped)</span>'; } 
+        else { el.className = 'hipaa-toggle off'; el.innerHTML = '🔓 <span>HIPAA Anonymizer: OFF (Raw Data)</span>'; }
+    }
+
+    function docFileLoaded() {
+        const f = document.getElementById('docFile').files[0];
+        document.getElementById('docUploadText').style.display = 'none';
+        document.getElementById('docFileName').innerText = "MOUNTED: " + f.name.toUpperCase();
+        document.getElementById('docFileName').style.display = "block";
+        document.getElementById('docConsole').innerHTML += `<br>[IO] Stream connected. Ready for Inference.`;
+    }
+    
+    async function runDoctorAnalysis() {
+        const fileInput = document.getElementById('docFile');
+        if(!fileInput.files.length) { alert("Please mount a DICOM or MRI file."); return; }
+        
+        const term = document.getElementById('docConsole');
+        const btn = document.getElementById('docRunBtn');
+        btn.style.display = 'none'; document.getElementById('resetBtn').style.display = 'block';
+        term.innerHTML += isHIPAA ? "<br>> STRIPPING PHI TAGS... OK." : "<br>> WARNING: SENDING RAW PHI TO NODE.";
+        term.innerHTML += "<br>> PINGING SERVERLESS AI ENGINE...";
+        
+        const formData = new FormData(); formData.append("query", "DOCTOR_FULL"); formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: formData });
+            const data = await res.json();
+            if(data.status === "error") {
+                term.innerHTML += `<br><span style="color:#ff003c">${data.analysis}</span>`;
+            } else {
+                const pos = data.tumor_pos; tumor.position.set(pos.x, pos.y, pos.z); tumor.visible = true;
+                term.innerHTML += "<br>> " + data.analysis.replace(/\n/g, "<br>");
+                document.getElementById('handoffBtn').style.display = 'block'; 
+                
+                autoRotate = false; controls.enabled = true; isFlying = true;
+                document.getElementById('handBtn').classList.add('active');
+                const worldPos = new THREE.Vector3(); tumor.getWorldPosition(worldPos);
+                targetZoom.copy(worldPos); camTarget.copy(worldPos).add(new THREE.Vector3(0, 0.5, 2.5));
+            }
+        } catch(e) { term.innerHTML += `<br><span style="color:#ff003c">[ERR] Serverless Function Timeout or Error.</span>`; }
+    }
+
+    function sendToPatient() {
+        alert("Surgical Plan successfully pushed to Patient's Neurolens App.");
+        document.getElementById('handoffBtn').innerText = "✓ PLAN SENT";
+        document.getElementById('handoffBtn').style.background = "#fff";
+    }
+
+    function resetSystem() {
+        tumor.visible = false;
+        autoRotate = true; controls.enabled = false; isFlying = false;
+        document.getElementById('handBtn').classList.remove('active');
+        document.getElementById('resetBtn').style.display = 'none';
+        document.getElementById('docRunBtn').style.display = 'block';
+        document.getElementById('handoffBtn').style.display = 'none';
+        document.getElementById('handoffBtn').innerText = "⇲ Send Plan to Neurolens";
+        document.getElementById('handoffBtn').style.background = "#00f3ff";
+        document.getElementById('docConsole').innerHTML = "[SYS] System Reset. Ready for input.";
+        document.getElementById('barX').style.width="0%"; document.getElementById('barY').style.width="0%"; document.getElementById('barZ').style.width="0%";
+        document.getElementById('docFile').value = ""; document.getElementById('docUploadText').style.display = 'block'; document.getElementById('docFileName').style.display = "none";
+    }
+
+    function toggleManual(){
+        if(tumor.visible) {
+            autoRotate = !autoRotate; controls.enabled = !autoRotate;
+            const btn = document.getElementById('handBtn');
+            if(!autoRotate) { 
+                btn.classList.add('active'); const worldPos = new THREE.Vector3(); tumor.getWorldPosition(worldPos); 
+                targetZoom.copy(worldPos); camTarget.copy(worldPos).add(new THREE.Vector3(0, 0.5, 2.5)); isFlying = true;
+            } else btn.classList.remove('active'); 
+        }
+    }
+
+    function updateLabel(){
+        const vec = new THREE.Vector3(); tumor.getWorldPosition(vec); vec.project(camera);
+        const x = (vec.x*.5+.5)*window.innerWidth; const y = (-(vec.y*.5)+.5)*window.innerHeight;
+        const el = document.getElementById('tumorLabel');
+        if(tumor.visible && vec.z<1) { el.style.display='block'; el.style.left=`${x+20}px`; el.style.top=`${y-15}px`; } else el.style.display='none';
+    }
+
+    function updateBars() {
+        if(tumor.visible) {
+            document.getElementById('barX').style.width = Math.abs(tumor.position.x * 30) + "%";
+            document.getElementById('barY').style.width = Math.abs(tumor.position.y * 50 + 20) + "%";
+            document.getElementById('barZ').style.width = Math.abs(tumor.position.z * 40) + "%";
+        }
+    }
+
+    function enterMode(role) {
+        MODE = role;
+        document.getElementById('portal').style.opacity = 0;
+        setTimeout(() => document.getElementById('portal').style.display='none', 500);
+        document.getElementById('logoutBtn').style.display='block';
+        if(role === 'DOCTOR') { document.getElementById('doctorView').style.display='block'; animate(); } 
+        else { document.getElementById('patientView').style.display='block'; }
+    }
+
+    async function handlePatUpload(type) {
+        const fileInput = type === 'REPORT' ? document.getElementById('patReportFile') : document.getElementById('patScanFile');
+        const f = fileInput.files[0];
+        if(!f) return;
+
+        const loader = type === 'REPORT' ? document.getElementById('load1') : document.getElementById('load2');
+        loader.style.display = 'inline-block';
+        const chat = document.getElementById('chatHistory');
+        chat.innerHTML += `<div class="msg user">Uploading: ${f.name}...</div>`;
+        
+        const langCode = document.getElementById('langSelector').value.split('-')[0]; 
+        const formData = new FormData();
+        formData.append("query", type === 'REPORT' ? "PATIENT_REPORT" : "PATIENT_SCAN");
+        formData.append("file", f);
+        formData.append("lang", langCode);
+
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: formData });
+            const data = await res.json();
+            loader.style.display = 'none'; 
+            const color = data.status === "error" ? "red" : "#333";
+            chat.innerHTML += `<div class="msg ai" style="color:${color}"><span class="txt">${data.analysis}</span> <button class="speak-btn" onclick="readAloud(this.previousElementSibling.innerHTML)">🔊</button></div>`; 
+            chat.scrollTop = chat.scrollHeight;
+        } catch(e) { loader.style.display = 'none'; chat.innerHTML += `<div class="msg ai" style="color:red">Error. Is the Serverless function active?</div>`; }
+        fileInput.value = ""; 
+    }
+
+    async function sendChat() {
+        const input = document.getElementById('chatInput'); const txt = input.value; if(!txt) return;
+        const chat = document.getElementById('chatHistory'); chat.innerHTML += `<div class="msg user">${txt}</div>`; input.value = "";
+        
+        const langCode = document.getElementById('langSelector').value.split('-')[0];
+        const formData = new FormData(); formData.append("query", "PATIENT_CHAT"); formData.append("text", txt); formData.append("lang", langCode);
+
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: formData });
+            const data = await res.json();
+            chat.innerHTML += `<div class="msg ai"><span class="txt">${data.analysis}</span> <button class="speak-btn" onclick="readAloud(this.previousElementSibling.innerHTML)">🔊</button></div>`; 
+            chat.scrollTop = chat.scrollHeight;
+        } catch(e) { chat.innerHTML += `<div class="msg ai" style="color:red">Error. Server API failed to fetch.</div>`; }
+    }
+
+    window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); };
+</script>
+</body>
+</html>
